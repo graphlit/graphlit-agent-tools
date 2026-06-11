@@ -33,6 +33,10 @@ describe("agent tools", () => {
       };
 
       expect(graphlitTool.tool.name).toBeTruthy();
+      expect(graphlitTool.inputSchema).toBeTruthy();
+      expect(graphlitTool.inputSchema.safeParse({}).success).toBeTypeOf(
+        "boolean",
+      );
       expect(schema.type).toBe("object");
       expect(schema.properties).toBeTruthy();
     }
@@ -40,7 +44,9 @@ describe("agent tools", () => {
 
   it("uses queryContents for filter-only retrieval", async () => {
     const queryContents = vi.fn(
-      async (_filter?: Types.ContentFilter): Promise<Types.QueryContentsQuery> =>
+      async (
+        _filter?: Types.ContentFilter,
+      ): Promise<Types.QueryContentsQuery> =>
         ({
           contents: {
             results: [
@@ -101,7 +107,7 @@ describe("agent tools", () => {
                 content: { id: "content-1" },
                 text: "A source excerpt about onboarding risk.",
                 relevance: 0.82,
-                metadata: "{\"section\":\"email\"}",
+                metadata: '{"section":"email"}',
                 pageNumber: null,
                 frameNumber: null,
               },
@@ -184,7 +190,9 @@ describe("agent tools", () => {
         }) as Types.SearchWebQuery,
     );
     const client = asClient({ searchWeb });
-    const webSearch = createWebSearchTool(client, { correlationId: "tenant-1" });
+    const webSearch = createWebSearchTool(client, {
+      correlationId: "tenant-1",
+    });
 
     const result = await webSearch.handler({ query: "Graphlit streamAgent" });
 

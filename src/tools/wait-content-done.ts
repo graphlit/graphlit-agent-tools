@@ -60,8 +60,13 @@ function resolveContentId(args: WaitContentDoneArgs): string {
 export function createWaitContentDoneTool(
   client: GraphlitClient,
   options: WaitContentDoneToolOptions = {},
-): GraphlitAgentTool<WaitContentDoneArgs, WaitContentDoneResult> {
+): GraphlitAgentTool<
+  WaitContentDoneArgs,
+  WaitContentDoneResult,
+  typeof WaitContentDoneInputSchema
+> {
   return {
+    inputSchema: WaitContentDoneInputSchema,
     tool: createToolDefinition(
       "wait_content_done",
       "Wait until a Graphlit content item has finished processing.",

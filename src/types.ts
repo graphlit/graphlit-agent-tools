@@ -1,4 +1,5 @@
 import type { Graphlit, Types } from "graphlit-client";
+import type { z } from "zod";
 
 export type GraphlitClient = Graphlit;
 
@@ -17,7 +18,12 @@ export type GraphlitToolHandler<TArgs = unknown, TResult = unknown> = (
   abortSignal?: AbortSignal,
 ) => Promise<TResult>;
 
-export interface GraphlitAgentTool<TArgs = unknown, TResult = unknown> {
+export interface GraphlitAgentTool<
+  TArgs = unknown,
+  TResult = unknown,
+  TInputSchema extends z.ZodType<TArgs> = z.ZodType<TArgs>,
+> {
+  inputSchema: TInputSchema;
   tool: Types.ToolDefinitionInput;
   handler: GraphlitToolHandler<TArgs, TResult>;
 }

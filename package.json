@@ -2,7 +2,7 @@
   "name": "@graphlit/agent-tools",
   "version": "1.0.0",
   "private": false,
-  "description": "Top-level Graphlit tool factories for TypeScript streamAgent applications",
+  "description": "Graphlit retrieval and source tools for agents",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

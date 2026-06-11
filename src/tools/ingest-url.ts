@@ -6,7 +6,11 @@ import type {
   GraphlitClient,
 } from "../types.js";
 import { throwIfAborted } from "../utils/abort.js";
-import { contentName, scalarToString, toContentResourceUri } from "../utils/content.js";
+import {
+  contentName,
+  scalarToString,
+  toContentResourceUri,
+} from "../utils/content.js";
 import { createToolDefinition } from "../utils/schema.js";
 import type { Types } from "graphlit-client";
 
@@ -43,8 +47,13 @@ export interface IngestUrlResult {
 export function createIngestUrlTool(
   client: GraphlitClient,
   options: IngestUrlToolOptions = {},
-): GraphlitAgentTool<IngestUrlArgs, IngestUrlResult> {
+): GraphlitAgentTool<
+  IngestUrlArgs,
+  IngestUrlResult,
+  typeof IngestUrlInputSchema
+> {
   return {
+    inputSchema: IngestUrlInputSchema,
     tool: createToolDefinition(
       "ingest_url",
       "Ingest a public URL into Graphlit so it can be retrieved by later agent turns.",
@@ -77,7 +86,8 @@ export function createIngestUrlTool(
 
       return {
         id: content.id,
-        resourceUri: toContentResourceUri(content.id) ?? `contents://${content.id}`,
+        resourceUri:
+          toContentResourceUri(content.id) ?? `contents://${content.id}`,
         name: contentName(content),
         uri: scalarToString(content.uri),
         state: content.state,

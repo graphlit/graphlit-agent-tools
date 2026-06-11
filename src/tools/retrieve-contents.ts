@@ -65,7 +65,9 @@ export const RetrieveContentsInputSchema = z.object({
   type: z
     .nativeEnum(Types.ContentTypes)
     .optional()
-    .describe("Graphlit content type, such as EMAIL, EVENT, FILE, PAGE, or TEXT."),
+    .describe(
+      "Graphlit content type, such as EMAIL, EVENT, FILE, PAGE, or TEXT.",
+    ),
   fileType: z
     .nativeEnum(Types.FileTypes)
     .optional()
@@ -138,7 +140,9 @@ function buildFilter(
   return {
     ...options.baseFilter,
     searchType: args.search
-      ? (options.searchType ?? options.baseFilter?.searchType ?? Types.SearchTypes.Hybrid)
+      ? (options.searchType ??
+        options.baseFilter?.searchType ??
+        Types.SearchTypes.Hybrid)
       : options.baseFilter?.searchType,
     disableInheritance: options.baseFilter?.disableInheritance ?? true,
     collections: collections ?? options.baseFilter?.collections,
@@ -146,7 +150,9 @@ function buildFilter(
     inNext: args.inNext ?? options.baseFilter?.inNext,
     types: args.type ? [args.type] : options.baseFilter?.types,
     fileTypes: args.fileType ? [args.fileType] : options.baseFilter?.fileTypes,
-    offset: args.search ? options.baseFilter?.offset : (args.offset ?? options.baseFilter?.offset),
+    offset: args.search
+      ? options.baseFilter?.offset
+      : (args.offset ?? options.baseFilter?.offset),
     limit,
   };
 }
@@ -221,12 +227,17 @@ function mapRetrievedSource(
 export function createRetrieveContentsTool(
   client: GraphlitClient,
   options: RetrieveContentsToolOptions = {},
-): GraphlitAgentTool<RetrieveContentsArgs, RetrieveContentsResult> {
+): GraphlitAgentTool<
+  RetrieveContentsArgs,
+  RetrieveContentsResult,
+  typeof RetrieveContentsInputSchema
+> {
   const defaultLimit = options.defaultLimit ?? DEFAULT_LIMIT;
   const maxLimit = options.maxLimit ?? DEFAULT_MAX_LIMIT;
   const maxTextLength = options.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH;
 
   return {
+    inputSchema: RetrieveContentsInputSchema,
     tool: createToolDefinition(
       "retrieve_contents",
       "Retrieve Graphlit-ingested content for RAG. Use search for text matching, or omit search for filter-only requests such as all emails in the last week.",
@@ -285,7 +296,9 @@ export function createRetrieveContentsTool(
       ];
 
       const lookup =
-        contentIds.length > 0 ? await client.lookupContents(contentIds) : undefined;
+        contentIds.length > 0
+          ? await client.lookupContents(contentIds)
+          : undefined;
       const contentMap = new Map(
         (lookup?.lookupContents?.results ?? [])
           .filter((content): content is LookupContent => content != null)
@@ -299,9 +312,7 @@ export function createRetrieveContentsTool(
             ? mapRetrievedSource(source, content, maxTextLength)
             : null;
         })
-        .filter(
-          (result): result is RetrievedContentResult => result != null,
-        );
+        .filter((result): result is RetrievedContentResult => result != null);
 
       return {
         search: args.search,

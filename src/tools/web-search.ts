@@ -62,13 +62,18 @@ function mapWebSearchResult(result: WebSearchResult) {
 export function createWebSearchTool(
   client: GraphlitClient,
   options: WebSearchToolOptions = {},
-): GraphlitAgentTool<WebSearchArgs, WebSearchToolResult> {
+): GraphlitAgentTool<
+  WebSearchArgs,
+  WebSearchToolResult,
+  typeof WebSearchInputSchema
+> {
   const defaultSearchService =
     options.defaultSearchService ?? Types.SearchServiceTypes.Parallel;
   const defaultLimit = options.defaultLimit ?? DEFAULT_LIMIT;
   const maxLimit = options.maxLimit ?? DEFAULT_MAX_LIMIT;
 
   return {
+    inputSchema: WebSearchInputSchema,
     tool: createToolDefinition(
       "web_search",
       "Search the public web for current information. Returns URLs, titles, and snippets; it does not ingest results.",

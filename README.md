@@ -1,8 +1,18 @@
 # @graphlit/agent-tools
 
-Top-level Graphlit tool factories for TypeScript apps that use `streamAgent()`.
+Give your agent the Graphlit retrieval tools it needs.
 
-This package gives developers a small set of Graphlit-backed tools they can choose from directly. It does not provide tool discovery, MCP server wrappers, approval middleware, or convenience bundles.
+Agents that answer from private knowledge need a small set of reliable abilities: retrieve the right Graphlit content, inspect the source behind a claim, and bring in fresh context when the knowledge base is missing something. `@graphlit/agent-tools` packages those abilities as small, framework-friendly tools backed by Graphlit.
+
+Use these tools with any agent harness that accepts structured tool definitions and async handlers: Graphlit `streamAgent()`, OpenAI Agents SDK, Mastra, Claude Agent SDK, Claude Managed Agents, the Vercel AI SDK, or your own loop.
+
+## Why Use It
+
+- **Give your agent private context**: retrieve from Graphlit-ingested documents, emails, events, messages, pages, posts, and files.
+- **Ground answers in inspectable sources**: return `contents://...` references your app can render or inspect before the agent makes source-backed claims.
+- **Handle real retrieval requests**: support semantic questions like "what risks did the customer mention?" and filter-only requests like "all emails in the last week."
+- **Bring in fresh context when needed**: let the agent search the web, ingest a URL, and wait for processing before using newly added content.
+- **Keep control in the app**: choose the tools your agent should have without adding tool discovery, an MCP wrapper, or an approval layer.
 
 ## Install
 
@@ -10,7 +20,52 @@ This package gives developers a small set of Graphlit-backed tools they can choo
 npm install graphlit-client @graphlit/agent-tools
 ```
 
-## Basic `streamAgent()` Usage
+Run these tools server-side with Graphlit credentials. Do not expose Graphlit project credentials to the browser.
+
+## Tool Shape
+
+Every tool creator returns the same three pieces:
+
+```typescript
+type GraphlitAgentTool<TArgs, TResult> = {
+  // Zod schema for frameworks that accept Zod or Standard JSON Schema.
+  inputSchema: z.ZodType<TArgs>;
+
+  // Graphlit tool definition. The schema is also available as a JSON string.
+  tool: Types.ToolDefinitionInput;
+
+  // Async implementation. The handler validates args with Zod before calling Graphlit.
+  handler: (
+    args: TArgs,
+    artifacts?: StreamAgentArtifactCollector,
+    abortSignal?: AbortSignal,
+  ) => Promise<TResult>;
+};
+```
+
+That shape is intentionally boring:
+
+- Use `tool` plus `handler` with Graphlit `streamAgent()`.
+- Use `inputSchema` plus `handler` with Zod/Standard-Schema frameworks like OpenAI Agents SDK and Mastra.
+- Use `inputSchema.shape` plus `handler` with Claude Agent SDK custom tools.
+- Use `JSON.parse(tool.schema)` plus `handler` with JSON Schema frameworks such as Claude Managed Agents custom tools.
+- Call `handler(args)` directly from any custom agent loop.
+
+## Tools
+
+| Agent ability               | Add this tool                  | What it does                                              |
+| --------------------------- | ------------------------------ | --------------------------------------------------------- |
+| Retrieve Graphlit knowledge | `createRetrieveContentsTool()` | Find relevant ingested content for grounded answers.      |
+| Inspect a source            | `createInspectContentTool()`   | Read fuller text from a returned `contents://...` source. |
+| Search the public web       | `createWebSearchTool()`        | Find current web leads without ingesting them.            |
+| Add a URL to Graphlit       | `createIngestUrlTool()`        | Save a public URL for later retrieval.                    |
+| Wait for processing         | `createWaitContentDoneTool()`  | Wait until a Graphlit content item is ready.              |
+
+Prefer `retrieve_contents` plus `inspect_content` as the default RAG pair. Add web search, URL ingestion, and readiness polling only when the agent workflow needs those abilities.
+
+## Graphlit streamAgent
+
+`streamAgent()` can use the returned Graphlit tool definitions and handlers directly.
 
 ```typescript
 import { Graphlit } from "graphlit-client";
@@ -39,11 +94,11 @@ await client.streamAgent(
   },
   undefined,
   undefined,
-  selectedTools.map((tool) => tool.tool),
-  Object.fromEntries(selectedTools.map((tool) => [tool.tool.name, tool.handler])),
-  {
-    maxToolRounds: 8,
-  },
+  selectedTools.map((item) => item.tool),
+  Object.fromEntries(
+    selectedTools.map((item) => [item.tool.name, item.handler]),
+  ),
+  { maxToolRounds: 8 },
   undefined,
   undefined,
   undefined,
@@ -52,17 +107,302 @@ await client.streamAgent(
   undefined,
   [
     "Use retrieve_contents before answering questions that depend on ingested Graphlit content.",
-    "Use inspect_content when a retrieved result needs fuller text before making a source-backed claim.",
+    "Use inspect_content when a retrieved source needs fuller text before making a source-backed claim.",
     "If retrieved evidence is weak or missing, say so plainly.",
   ].join(" "),
 );
+```
+
+## Mastra
+
+Mastra tools accept an `id`, `description`, Zod-compatible `inputSchema`, and `execute` function. Pass the Graphlit tool's `inputSchema` and delegate execution to the Graphlit handler.
+
+```typescript
+import { Agent } from "@mastra/core/agent";
+import { createTool } from "@mastra/core/tools";
+import { Graphlit } from "graphlit-client";
+import {
+  createInspectContentTool,
+  createRetrieveContentsTool,
+} from "@graphlit/agent-tools";
+
+const graphlit = new Graphlit(
+  process.env.GRAPHLIT_ORGANIZATION_ID!,
+  process.env.GRAPHLIT_ENVIRONMENT_ID!,
+  process.env.GRAPHLIT_JWT_SECRET!,
+);
+
+const retrieveContents = createRetrieveContentsTool(graphlit);
+const inspectContent = createInspectContentTool(graphlit);
+
+const mastraRetrieveContents = createTool({
+  id: retrieveContents.tool.name,
+  description:
+    retrieveContents.tool.description ?? "Retrieve Graphlit content.",
+  inputSchema: retrieveContents.inputSchema,
+  execute: async (args, context) =>
+    retrieveContents.handler(args, undefined, context?.abortSignal),
+});
+
+const mastraInspectContent = createTool({
+  id: inspectContent.tool.name,
+  description: inspectContent.tool.description ?? "Inspect Graphlit content.",
+  inputSchema: inspectContent.inputSchema,
+  execute: async (args, context) =>
+    inspectContent.handler(args, undefined, context?.abortSignal),
+});
+
+export const customerKnowledgeAgent = new Agent({
+  id: "customer-knowledge-agent",
+  name: "Customer Knowledge Agent",
+  model: "openai/gpt-5.5",
+  instructions: [
+    "Answer from Graphlit content when the user asks about private knowledge.",
+    "Use retrieve_contents to find relevant content.",
+    "Use inspect_content before making answer-critical source-backed claims.",
+  ].join(" "),
+  tools: {
+    [retrieveContents.tool.name]: mastraRetrieveContents,
+    [inspectContent.tool.name]: mastraInspectContent,
+  },
+});
+
+await customerKnowledgeAgent.generate(
+  "Which customer emails from last week mention onboarding risk?",
+);
+```
+
+## OpenAI Agents SDK
+
+OpenAI Agents SDK tools accept a `name`, `description`, Zod `parameters`, and `execute` function. Wrap the Graphlit handler as a function tool. Graphlit's SDK already handles its own OpenAI Responses API use internally; this adapter only exposes Graphlit retrieval as an OpenAI Agents SDK tool.
+
+```typescript
+import { Agent, run, tool } from "@openai/agents";
+import { Graphlit } from "graphlit-client";
+import {
+  createInspectContentTool,
+  createRetrieveContentsTool,
+} from "@graphlit/agent-tools";
+
+const graphlit = new Graphlit(
+  process.env.GRAPHLIT_ORGANIZATION_ID!,
+  process.env.GRAPHLIT_ENVIRONMENT_ID!,
+  process.env.GRAPHLIT_JWT_SECRET!,
+);
+
+const retrieveContents = createRetrieveContentsTool(graphlit);
+const inspectContent = createInspectContentTool(graphlit);
+
+const openaiRetrieveContents = tool({
+  name: retrieveContents.tool.name,
+  description:
+    retrieveContents.tool.description ?? "Retrieve Graphlit content.",
+  parameters: retrieveContents.inputSchema,
+  async execute(args) {
+    return retrieveContents.handler(args);
+  },
+});
+
+const openaiInspectContent = tool({
+  name: inspectContent.tool.name,
+  description: inspectContent.tool.description ?? "Inspect Graphlit content.",
+  parameters: inspectContent.inputSchema,
+  async execute(args) {
+    return inspectContent.handler(args);
+  },
+});
+
+const customerKnowledgeAgent = new Agent({
+  name: "Customer Knowledge Agent",
+  model: "gpt-5.5",
+  instructions: [
+    "Answer from Graphlit content when the user asks about private knowledge.",
+    "Use retrieve_contents to find relevant content.",
+    "Use inspect_content before making answer-critical source-backed claims.",
+  ].join(" "),
+  tools: [openaiRetrieveContents, openaiInspectContent],
+});
+
+const result = await run(
+  customerKnowledgeAgent,
+  "Which customer emails from last week mention onboarding risk?",
+);
+
+console.log(result.finalOutput);
+```
+
+## Claude Agent SDK
+
+Claude Agent SDK custom tools run through an in-process MCP server. Its TypeScript `tool()` helper expects a Zod raw shape, so pass `inputSchema.shape`.
+
+```typescript
+import {
+  createSdkMcpServer,
+  query,
+  tool,
+} from "@anthropic-ai/claude-agent-sdk";
+import { Graphlit } from "graphlit-client";
+import {
+  createInspectContentTool,
+  createRetrieveContentsTool,
+} from "@graphlit/agent-tools";
+
+const graphlit = new Graphlit(
+  process.env.GRAPHLIT_ORGANIZATION_ID!,
+  process.env.GRAPHLIT_ENVIRONMENT_ID!,
+  process.env.GRAPHLIT_JWT_SECRET!,
+);
+
+const retrieveContents = createRetrieveContentsTool(graphlit);
+const inspectContent = createInspectContentTool(graphlit);
+
+const claudeRetrieveContents = tool(
+  retrieveContents.tool.name,
+  retrieveContents.tool.description ?? "Retrieve Graphlit content.",
+  retrieveContents.inputSchema.shape,
+  async (args) => {
+    const result = await retrieveContents.handler(args);
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result,
+    };
+  },
+  { annotations: { readOnlyHint: true, openWorldHint: true } },
+);
+
+const claudeInspectContent = tool(
+  inspectContent.tool.name,
+  inspectContent.tool.description ?? "Inspect Graphlit content.",
+  inspectContent.inputSchema.shape,
+  async (args) => {
+    const result = await inspectContent.handler(args);
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result,
+    };
+  },
+  { annotations: { readOnlyHint: true, openWorldHint: true } },
+);
+
+const graphlitServer = createSdkMcpServer({
+  name: "graphlit",
+  version: "1.0.0",
+  tools: [claudeRetrieveContents, claudeInspectContent],
+});
+
+for await (const message of query({
+  prompt: "Summarize the customer emails from last week about onboarding risk.",
+  options: {
+    mcpServers: { graphlit: graphlitServer },
+    allowedTools: [
+      "mcp__graphlit__retrieve_contents",
+      "mcp__graphlit__inspect_content",
+    ],
+  },
+})) {
+  if (message.type === "result" && message.subtype === "success") {
+    console.log(message.result);
+  }
+}
+```
+
+## Claude Managed Agents
+
+Claude Managed Agents custom tools are client-executed: Claude emits a structured tool request, your application runs the Graphlit handler, then sends the result back to the session.
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import { Graphlit } from "graphlit-client";
+import {
+  createInspectContentTool,
+  createRetrieveContentsTool,
+} from "@graphlit/agent-tools";
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+const graphlit = new Graphlit(
+  process.env.GRAPHLIT_ORGANIZATION_ID!,
+  process.env.GRAPHLIT_ENVIRONMENT_ID!,
+  process.env.GRAPHLIT_JWT_SECRET!,
+);
+
+const graphlitTools = [
+  createRetrieveContentsTool(graphlit),
+  createInspectContentTool(graphlit),
+];
+
+const handlers = Object.fromEntries(
+  graphlitTools.map((item) => [item.tool.name, item.handler]),
+);
+
+const agent = await anthropic.beta.agents.create({
+  name: "Customer Knowledge Agent",
+  model: "claude-opus-4-8",
+  tools: graphlitTools.map((item) => ({
+    type: "custom" as const,
+    name: item.tool.name,
+    description: item.tool.description ?? `Run ${item.tool.name}.`,
+    input_schema: JSON.parse(item.tool.schema),
+  })),
+});
+
+const session = await anthropic.beta.sessions.create({
+  agent: agent.id,
+  environment_id: process.env.ANTHROPIC_ENVIRONMENT_ID!,
+});
+
+const stream = await anthropic.beta.sessions.events.stream(session.id);
+
+await anthropic.beta.sessions.events.send(session.id, {
+  events: [
+    {
+      type: "user.message",
+      content: [
+        {
+          type: "text",
+          text: "Which customer emails from last week mention onboarding risk?",
+        },
+      ],
+    },
+  ],
+});
+
+for await (const event of stream) {
+  if (event.type === "agent.custom_tool_use") {
+    const handler = handlers[event.name];
+    if (!handler) continue;
+
+    const result = await handler(event.input);
+
+    await anthropic.beta.sessions.events.send(session.id, {
+      events: [
+        {
+          type: "user.custom_tool_result",
+          custom_tool_use_id: event.id,
+          content: [{ type: "text", text: JSON.stringify(result) }],
+        },
+      ],
+    });
+  }
+
+  if (
+    event.type === "session.status_idle" &&
+    event.stop_reason?.type === "end_turn"
+  ) {
+    break;
+  }
+}
 ```
 
 ## Realistic Retrieval Examples
 
 `retrieve_contents` supports both semantic retrieval and filter-only content lookup.
 
-For a model prompt such as “show me all emails from last week,” the tool can be called without a text search:
+For a prompt such as "show me all emails from last week," the tool can be called without a text search:
 
 ```typescript
 await retrieveContents.handler({
@@ -102,28 +442,9 @@ await inspectContent.handler({
 });
 ```
 
-## Tools
-
-| Factory | Tool name | SDK operation |
-| --- | --- | --- |
-| `createRetrieveContentsTool()` | `retrieve_contents` | `retrieveSources`, `lookupContents`, `queryContents` |
-| `createInspectContentTool()` | `inspect_content` | `getContent` |
-| `createWebSearchTool()` | `web_search` | `searchWeb` |
-| `createIngestUrlTool()` | `ingest_url` | `ingestUri` |
-| `createWaitContentDoneTool()` | `wait_content_done` | `isContentDone` |
-
-Each factory returns:
-
-```typescript
-type GraphlitAgentTool = {
-  tool: Types.ToolDefinitionInput;
-  handler: NonNullable<Parameters<Graphlit["streamAgent"]>[5]>[string];
-};
-```
-
 ## Notes
 
-- Run these tools server-side with Graphlit credentials.
 - Tool schemas are authored with Zod and converted to Graphlit `ToolDefinitionInput`.
 - Public options reuse `graphlit-client` SDK types where possible, including `Types.ContentFilter`, `Types.EntityReferenceInput`, `Types.RetrievalStrategyInput`, and `Types.RerankingStrategyInput`.
 - Returned retrieval results include `contents://...` resource URIs for UI source rendering and follow-up inspection.
+- This package is a set of explicit tools. It does not include tool discovery, tool bundles, MCP server hosting, approval middleware, or app-specific routing.

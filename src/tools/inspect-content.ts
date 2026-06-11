@@ -65,8 +65,13 @@ function resolveContentId(args: InspectContentArgs): string {
 export function createInspectContentTool(
   client: GraphlitClient,
   options: InspectContentToolOptions = {},
-): GraphlitAgentTool<InspectContentArgs, InspectContentResult> {
+): GraphlitAgentTool<
+  InspectContentArgs,
+  InspectContentResult,
+  typeof InspectContentInputSchema
+> {
   return {
+    inputSchema: InspectContentInputSchema,
     tool: createToolDefinition(
       "inspect_content",
       "Inspect one Graphlit content item returned by retrieve_contents, using its id or contents:// resource URI.",
@@ -108,7 +113,8 @@ export function createInspectContentTool(
 
       return {
         id: content.id,
-        resourceUri: toContentResourceUri(content.id) ?? `contents://${content.id}`,
+        resourceUri:
+          toContentResourceUri(content.id) ?? `contents://${content.id}`,
         name: contentName(content),
         uri: scalarToString(content.uri),
         type: content.type,
