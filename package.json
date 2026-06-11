@@ -1,6 +1,7 @@
 {
   "name": "@graphlit/agent-tools",
   "version": "1.0.0",
+  "private": false,
   "description": "Top-level Graphlit tool factories for TypeScript streamAgent applications",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,6 +15,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/graphlit/graphlit-agent-tools.git"
