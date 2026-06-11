@@ -1,0 +1,57 @@
+{
+  "name": "@graphlit/agent-tools",
+  "version": "1.0.0",
+  "description": "Top-level Graphlit tool factories for TypeScript streamAgent applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/graphlit/graphlit-agent-tools.git"
+  },
+  "keywords": [
+    "Graphlit",
+    "agents",
+    "tools",
+    "RAG",
+    "streamAgent",
+    "LLM"
+  ],
+  "author": "Unstruk Data Inc.",
+  "contributors": [
+    "Kirk Marple (https://github.com/kirk-marple)"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "peerDependencies": {
+    "graphlit-client": ">=1.0.20260609001"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.27",
+    "graphlit-client": "^1.0.20260609001",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
