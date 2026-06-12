@@ -1,12 +1,49 @@
 import type { Graphlit } from "graphlit-client";
 import { Types } from "graphlit-client";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
+import * as agentToolsExports from "../src/index.js";
 import {
+  createAddContentLabelTool,
+  createAddContentsToCollectionTool,
+  createCountContentsTool,
+  createCreateCollectionTool,
+  createDeleteCollectionTool,
+  createDeleteMemoryTool,
+  createEnrichCompaniesTool,
+  createEnrichPersonsTool,
+  createExploreEntityTool,
+  createIngestLinksTool,
+  createIngestMemoryTool,
+  createIngestTextTool,
   createIngestUrlTool,
   createInspectContentTool,
+  createListResourcesTool,
+  createLookupEntityTool,
+  createPublishAudioTool,
+  createPublishImageTool,
+  createPublishVideoTool,
+  createQueryCollectionsTool,
+  createQueryContentFacetsTool,
+  createQueryFeedsTool,
+  createReadResourceTool,
+  createRemoveContentLabelTool,
+  createRemoveContentsFromCollectionTool,
+  createRetrieveCommunicationsTool,
+  createRetrieveConversationsTool,
   createRetrieveContentsTool,
+  createRetrieveEntitiesTool,
+  createRetrieveFactsTool,
+  createRetrieveImagesTool,
+  createRetrieveMemoriesTool,
+  createScreenshotPageTool,
   createWaitContentDoneTool,
+  createWaitFeedDoneTool,
+  createWebCrawlTool,
+  createWebMapTool,
   createWebSearchTool,
   type StreamAgentArtifactCollector,
 } from "../src/index.js";
@@ -19,11 +56,44 @@ describe("agent tools", () => {
   it("creates Graphlit tool definitions with JSON schemas", () => {
     const client = asClient({});
     const tools = [
+      createAddContentLabelTool(client),
+      createAddContentsToCollectionTool(client),
+      createCountContentsTool(client),
+      createCreateCollectionTool(client),
+      createDeleteCollectionTool(client),
+      createDeleteMemoryTool(client),
+      createEnrichCompaniesTool(client),
+      createEnrichPersonsTool(client),
+      createExploreEntityTool(client),
+      createIngestLinksTool(client),
+      createIngestMemoryTool(client),
+      createIngestTextTool(client),
       createRetrieveContentsTool(client),
       createInspectContentTool(client),
+      createListResourcesTool(client),
+      createLookupEntityTool(client),
+      createPublishAudioTool(client),
+      createPublishImageTool(client),
+      createPublishVideoTool(client),
+      createQueryCollectionsTool(client),
+      createQueryContentFacetsTool(client),
+      createQueryFeedsTool(client),
+      createReadResourceTool(client),
+      createRemoveContentLabelTool(client),
+      createRemoveContentsFromCollectionTool(client),
+      createRetrieveCommunicationsTool(client),
+      createRetrieveConversationsTool(client),
+      createRetrieveEntitiesTool(client),
+      createRetrieveFactsTool(client),
+      createRetrieveImagesTool(client),
+      createRetrieveMemoriesTool(client),
       createWebSearchTool(client),
       createIngestUrlTool(client),
       createWaitContentDoneTool(client),
+      createWaitFeedDoneTool(client),
+      createWebCrawlTool(client),
+      createWebMapTool(client),
+      createScreenshotPageTool(client),
     ];
 
     for (const graphlitTool of tools) {
@@ -40,6 +110,119 @@ describe("agent tools", () => {
       expect(schema.type).toBe("object");
       expect(schema.properties).toBeTruthy();
     }
+  });
+
+  it("keeps private Zine/Dossium tools out of package exports", () => {
+    const exportedNames = new Set(Object.keys(agentToolsExports));
+
+    for (const privateName of [
+      "createInspectTool",
+      "createDraftEmailTool",
+      "createSendEmailTool",
+      "createPostChannelMessageTool",
+      "createPostSocialTool",
+      "createWriteDocumentTool",
+      "createWriteIssueTool",
+      "createWriteCalendarEventTool",
+      "createAnalyzePromptTool",
+      "createPlatformListResourcesTool",
+      "createPlatformReadResourceTool",
+    ]) {
+      expect(exportedNames.has(privateName)).toBe(false);
+    }
+  });
+
+  it("keeps source and tests free of app-layer dependency strings", () => {
+    const root = dirname(dirname(fileURLToPath(import.meta.url)));
+    const files: string[] = [];
+
+    function visit(path: string): void {
+      for (const entry of readdirSync(path)) {
+        const fullPath = join(path, entry);
+        const stat = statSync(fullPath);
+
+        if (stat.isDirectory()) {
+          visit(fullPath);
+        } else if (/\.(ts|tsx)$/.test(entry)) {
+          files.push(fullPath);
+        }
+      }
+    }
+
+    visit(join(root, "src"));
+    visit(join(root, "test"));
+
+    const banned = [
+      /from ['"]@\//,
+      /from ['"].*zine/i,
+      new RegExp("re" + "dis", "i"),
+      new RegExp("cl" + "erk", "i"),
+      new RegExp("graphlit" + "-server", "i"),
+      new RegExp("oauth" + "-connector", "i"),
+      new RegExp("distribution" + "-utils", "i"),
+      new RegExp("resolution" + "-required", "i"),
+      new RegExp("agent" + "Targets"),
+      new RegExp("Execution" + "Context"),
+      new RegExp("createResolutionRequired" + "Result"),
+      new RegExp("content" + "Link"),
+      new RegExp("getVariant" + "BaseUrl"),
+    ];
+
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      for (const pattern of banned) {
+        expect(pattern.test(text)).toBe(false);
+      }
+    }
+  });
+
+  it("lists and reads Graphlit resource-shaped URIs without platform MCP tool names", async () => {
+    const queryCollections = vi.fn(
+      async (): Promise<Types.QueryCollectionsQuery> =>
+        ({
+          collections: {
+            results: [
+              {
+                id: "collection-1",
+                name: "Customer docs",
+                state: Types.EntityState.Enabled,
+                type: Types.CollectionTypes.Collection,
+                creationDate: "2026-06-01T00:00:00Z",
+                owner: { id: "owner-1" },
+              },
+            ],
+          },
+        }) as Types.QueryCollectionsQuery,
+    );
+    const getFact = vi.fn(
+      async (): Promise<Types.GetFactQuery> =>
+        ({
+          fact: {
+            id: "fact-1",
+            text: "The customer asked about onboarding risk.",
+            state: Types.EntityState.Enabled,
+            creationDate: "2026-06-10T00:00:00Z",
+            owner: { id: "owner-1" },
+          },
+        }) as Types.GetFactQuery,
+    );
+    const client = asClient({ queryCollections, getFact });
+    const listResources = createListResourcesTool(client);
+    const readResource = createReadResourceTool(client);
+
+    const listed = await listResources.handler({ kinds: ["collections"] });
+    const read = await readResource.handler({ uri: "facts://fact-1" });
+
+    expect(listed.resources[0]).toMatchObject({
+      uri: "collections://collection-1",
+      kind: "collections",
+    });
+    expect(getFact).toHaveBeenCalledWith("fact-1", undefined);
+    expect(read).toMatchObject({
+      uri: "facts://fact-1",
+      resourceType: "facts",
+      text: "The customer asked about onboarding risk.",
+    });
   });
 
   it("uses queryContents for filter-only retrieval", async () => {
