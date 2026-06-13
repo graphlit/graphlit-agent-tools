@@ -28,6 +28,7 @@ export const ReadResourceInputSchema = z.object({
 export type ReadResourceArgs = z.infer<typeof ReadResourceInputSchema>;
 
 export interface ReadResourceToolOptions {
+  allowedKinds?: ResourceKind[];
   maxTextLength?: number;
   relatedLimit?: number;
   correlationId?: string;
@@ -62,6 +63,30 @@ function resolveUri(uri: string): { type: ResourceKind; id: string } {
   throw new Error(`Unsupported resource URI: ${uri}`);
 }
 
+function allowedKinds(options: ReadResourceToolOptions): ResourceKind[] {
+  return [
+    ...new Set(
+      options.allowedKinds ?? [
+        "contents",
+        "collections",
+        "feeds",
+        "facts",
+        "conversations",
+        "entities",
+      ],
+    ),
+  ];
+}
+
+function assertAllowedKind(
+  kind: ResourceKind,
+  options: ReadResourceToolOptions,
+): void {
+  if (!allowedKinds(options).includes(kind)) {
+    throw new Error(`Resource kind not allowed: ${kind}`);
+  }
+}
+
 export function createReadResourceTool(
   client: GraphlitClient,
   options: ReadResourceToolOptions = {},
@@ -82,6 +107,9 @@ export function createReadResourceTool(
 
       const args = ReadResourceInputSchema.parse(rawArgs);
       const { type, id } = resolveUri(args.uri);
+
+      assertAllowedKind(type, options);
+
       const maxTextLength = args.maxTextLength ?? options.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH;
       const relatedLimit = clampInteger(
         args.relatedLimit,

@@ -44,6 +44,7 @@ export type ResourceKind = z.infer<typeof ResourceKindSchema>;
 export type ListResourcesArgs = z.infer<typeof ListResourcesInputSchema>;
 
 export interface ListResourcesToolOptions {
+  allowedKinds?: ResourceKind[];
   defaultKinds?: ResourceKind[];
   defaultLimit?: number;
   maxLimit?: number;
@@ -61,6 +62,38 @@ export interface ResourceDescriptor {
 
 export interface ListResourcesResult {
   resources: ResourceDescriptor[];
+}
+
+function uniqueKinds(kinds: ResourceKind[]): ResourceKind[] {
+  return [...new Set(kinds)];
+}
+
+function allowedKinds(options: ListResourcesToolOptions): ResourceKind[] {
+  return uniqueKinds(
+    options.allowedKinds ?? [
+      "contents",
+      "collections",
+      "feeds",
+      "facts",
+      "conversations",
+      "entities",
+    ],
+  );
+}
+
+function requestedKinds(
+  args: ListResourcesArgs,
+  options: ListResourcesToolOptions,
+): ResourceKind[] {
+  const allowed = allowedKinds(options);
+  const requested = uniqueKinds(args.kinds ?? options.defaultKinds ?? ["collections", "feeds", "contents"]);
+  const denied = requested.filter((kind) => !allowed.includes(kind));
+
+  if (denied.length > 0) {
+    throw new Error(`Resource kind not allowed: ${denied.join(", ")}`);
+  }
+
+  return requested;
 }
 
 function descriptor(
@@ -112,7 +145,7 @@ export function createListResourcesTool(
       throwIfAborted(abortSignal);
 
       const args = ListResourcesInputSchema.parse(rawArgs);
-      const kinds = args.kinds ?? options.defaultKinds ?? ["collections", "feeds", "contents"];
+      const kinds = requestedKinds(args, options);
       const limit = clampInteger(
         args.limit,
         options.defaultLimit ?? DEFAULT_LIMIT,

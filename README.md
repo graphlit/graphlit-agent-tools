@@ -55,6 +55,8 @@ That shape is intentionally boring:
 
 Prefer `retrieve_contents` plus `inspect_content` as the default RAG pair. Add mutating, enrichment, and generation tools only when the host app wants the agent to have those abilities.
 
+For read-only agent comparisons or customer-facing agents that should not mutate a Graphlit project, a good default set is `retrieve_contents`, `inspect_content`, `count_contents`, `list_resources`, `read_resource`, `web_search`, and `web_map`. When exposing resource tools in a constrained app, pass `allowedKinds` to keep the agent inside the resource surface you intend.
+
 ### Read-Only Retrieval
 
 | Agent ability | Add this tool | What it does |
