@@ -14,6 +14,14 @@ import type { ResourceKind } from "./list-resources.js";
 
 const DEFAULT_MAX_TEXT_LENGTH = 20_000;
 const DEFAULT_RELATED_LIMIT = 20;
+const DEFAULT_ALLOWED_KINDS: ResourceKind[] = [
+  "contents",
+  "collections",
+  "feeds",
+  "facts",
+  "conversations",
+  "entities",
+];
 
 export const ReadResourceInputSchema = z.object({
   uri: z
@@ -64,18 +72,7 @@ function resolveUri(uri: string): { type: ResourceKind; id: string } {
 }
 
 function allowedKinds(options: ReadResourceToolOptions): ResourceKind[] {
-  return [
-    ...new Set(
-      options.allowedKinds ?? [
-        "contents",
-        "collections",
-        "feeds",
-        "facts",
-        "conversations",
-        "entities",
-      ],
-    ),
-  ];
+  return [...new Set(options.allowedKinds ?? DEFAULT_ALLOWED_KINDS)];
 }
 
 function assertAllowedKind(
