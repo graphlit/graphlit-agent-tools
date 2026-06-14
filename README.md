@@ -53,68 +53,69 @@ That shape is intentionally boring:
 
 ## Tools
 
-Prefer `retrieve_contents` plus `inspect_content` as the default RAG pair. Add mutating, enrichment, and generation tools only when the host app wants the agent to have those abilities.
+Prefer `retrieve_contents` plus `inspect_content` as the default RAG pair. Add `analyze_prompt` when you want the model to produce a visible routing contract before retrieval. Add mutating, enrichment, and generation tools only when the host app wants the agent to have those abilities.
 
 For read-only agent comparisons or customer-facing agents that should not mutate a Graphlit project, a good default set is `retrieve_contents`, `inspect_content`, `count_contents`, `list_resources`, `read_resource`, `web_search`, and `web_map`. When exposing resource tools in a constrained app, pass `allowedKinds` to keep the agent inside the resource surface you intend.
 
 ### Read-Only Retrieval
 
-| Agent ability | Add this tool | What it does |
-| --- | --- | --- |
-| Retrieve Graphlit knowledge | `createRetrieveContentsTool()` | Find relevant ingested content for grounded answers. |
-| Inspect a source | `createInspectContentTool()` | Read fuller text, parent/child references, export URI text, or optional image descriptions from a returned `contents://...` source. |
-| Count content | `createCountContentsTool()` | Count content matching public filters. |
-| Query facets | `createQueryContentFacetsTool()` | Return content facet buckets for counts and filtering. |
-| Retrieve communications | `createRetrieveCommunicationsTool()` | Find emails, events, messages, posts, issues, and pull requests by topic, participants, domains, and recency. |
-| Retrieve conversations | `createRetrieveConversationsTool()` | Search Graphlit conversations. |
-| Retrieve entities | `createRetrieveEntitiesTool()` | Retrieve knowledge-graph entities relevant to a prompt. |
-| Retrieve facts | `createRetrieveFactsTool()` | Retrieve facts relevant to a prompt and filter. |
-| Lookup an entity | `createLookupEntityTool()` | Resolve an entity by ID or name and return relationships. |
-| Explore entities | `createExploreEntityTool()` | Compose entity lookup, related facts, contents, and conversations. |
-| Retrieve images | `createRetrieveImagesTool()` | Retrieve image content and optionally fetch image bytes. |
-| Retrieve memories | `createRetrieveMemoriesTool()` | Retrieve memory content with `ContentTypes.Memory` locked internally. |
-| Query collections | `createQueryCollectionsTool()` | List collections. |
-| Query feeds | `createQueryFeedsTool()` | List feeds. |
-| Search the public web | `createWebSearchTool()` | Find current web leads without ingesting them. |
-| Map a site | `createWebMapTool()` | Discover public URLs from a site map without ingesting them. |
-| List resource URIs | `createListResourcesTool()` | List Graphlit resource URIs that `read_resource` can dereference. |
-| Read resource URIs | `createReadResourceTool()` | Read `contents://`, `collections://`, `feeds://`, `facts://`, `conversations://`, and `entities://` resources through SDK calls. |
+| Agent ability                    | Add this tool                        | What it does                                                                                                                                                 |
+| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Analyze a prompt before tool use | `createAnalyzePromptTool()`          | Return a compact routing contract for source scopes, subjects, evidence plan, answer shape, and next step. It does not retrieve evidence or mutate Graphlit. |
+| Retrieve Graphlit knowledge      | `createRetrieveContentsTool()`       | Find relevant ingested content for grounded answers.                                                                                                         |
+| Inspect a source                 | `createInspectContentTool()`         | Read fuller text, parent/child references, export URI text, or optional image descriptions from a returned `contents://...` source.                          |
+| Count content                    | `createCountContentsTool()`          | Count content matching public filters.                                                                                                                       |
+| Query facets                     | `createQueryContentFacetsTool()`     | Return content facet buckets for counts and filtering.                                                                                                       |
+| Retrieve communications          | `createRetrieveCommunicationsTool()` | Find emails, events, messages, posts, issues, and pull requests by topic, participants, domains, and recency.                                                |
+| Retrieve conversations           | `createRetrieveConversationsTool()`  | Search Graphlit conversations.                                                                                                                               |
+| Retrieve entities                | `createRetrieveEntitiesTool()`       | Retrieve knowledge-graph entities relevant to a prompt.                                                                                                      |
+| Retrieve facts                   | `createRetrieveFactsTool()`          | Retrieve facts relevant to a prompt and filter.                                                                                                              |
+| Lookup an entity                 | `createLookupEntityTool()`           | Resolve an entity by ID or name and return relationships.                                                                                                    |
+| Explore entities                 | `createExploreEntityTool()`          | Compose entity lookup, related facts, contents, and conversations.                                                                                           |
+| Retrieve images                  | `createRetrieveImagesTool()`         | Retrieve image content and optionally fetch image bytes.                                                                                                     |
+| Retrieve memories                | `createRetrieveMemoriesTool()`       | Retrieve memory content with `ContentTypes.Memory` locked internally.                                                                                        |
+| Query collections                | `createQueryCollectionsTool()`       | List collections.                                                                                                                                            |
+| Query feeds                      | `createQueryFeedsTool()`             | List feeds.                                                                                                                                                  |
+| Search the public web            | `createWebSearchTool()`              | Find current web leads without ingesting them.                                                                                                               |
+| Map a site                       | `createWebMapTool()`                 | Discover public URLs from a site map without ingesting them.                                                                                                 |
+| List resource URIs               | `createListResourcesTool()`          | List Graphlit resource URIs that `read_resource` can dereference.                                                                                            |
+| Read resource URIs               | `createReadResourceTool()`           | Read `contents://`, `collections://`, `feeds://`, `facts://`, `conversations://`, and `entities://` resources through SDK calls.                             |
 
 ### Graphlit Content Mutation
 
 These tools mutate Graphlit project state. Host applications should expose them intentionally and apply their own approval policy when needed.
 
-| Agent ability | Add this tool | What it does |
-| --- | --- | --- |
-| Add a URL | `createIngestUrlTool()` | Save a public URL for later retrieval. |
-| Add text | `createIngestTextTool()` | Save raw text for later retrieval. |
-| Add links | `createIngestLinksTool()` | Ingest public hyperlinks extracted from existing Graphlit content. |
-| Screenshot a page | `createScreenshotPageTool()` | Capture a public page screenshot into Graphlit. |
-| Create a collection | `createCreateCollectionTool()` | Create a collection. |
-| Add contents to collections | `createAddContentsToCollectionTool()` | Add content IDs to collections. |
-| Remove contents from a collection | `createRemoveContentsFromCollectionTool()` | Remove content IDs from one collection. |
-| Delete a collection | `createDeleteCollectionTool()` | Delete a collection by ID or `collections://...` URI. |
-| Add a content label | `createAddContentLabelTool()` | Add one label to one content item. |
-| Remove a content label | `createRemoveContentLabelTool()` | Remove one label from one content item. |
-| Create a web crawl | `createWebCrawlTool()` | Create a Graphlit web crawl feed. Defaults to a one-time crawl. |
-| Wait for content processing | `createWaitContentDoneTool()` | Wait until a content item is ready. |
-| Wait for feed sync | `createWaitFeedDoneTool()` | Wait until a feed sync is ready. |
-| Store memory | `createIngestMemoryTool()` | Store a Graphlit memory item. The public schema does not expose TTL. |
-| Delete memory | `createDeleteMemoryTool()` | Delete memory content after verifying `ContentTypes.Memory`. |
+| Agent ability                     | Add this tool                              | What it does                                                         |
+| --------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| Add a URL                         | `createIngestUrlTool()`                    | Save a public URL for later retrieval.                               |
+| Add text                          | `createIngestTextTool()`                   | Save raw text for later retrieval.                                   |
+| Add links                         | `createIngestLinksTool()`                  | Ingest public hyperlinks extracted from existing Graphlit content.   |
+| Screenshot a page                 | `createScreenshotPageTool()`               | Capture a public page screenshot into Graphlit.                      |
+| Create a collection               | `createCreateCollectionTool()`             | Create a collection.                                                 |
+| Add contents to collections       | `createAddContentsToCollectionTool()`      | Add content IDs to collections.                                      |
+| Remove contents from a collection | `createRemoveContentsFromCollectionTool()` | Remove content IDs from one collection.                              |
+| Delete a collection               | `createDeleteCollectionTool()`             | Delete a collection by ID or `collections://...` URI.                |
+| Add a content label               | `createAddContentLabelTool()`              | Add one label to one content item.                                   |
+| Remove a content label            | `createRemoveContentLabelTool()`           | Remove one label from one content item.                              |
+| Create a web crawl                | `createWebCrawlTool()`                     | Create a Graphlit web crawl feed. Defaults to a one-time crawl.      |
+| Wait for content processing       | `createWaitContentDoneTool()`              | Wait until a content item is ready.                                  |
+| Wait for feed sync                | `createWaitFeedDoneTool()`                 | Wait until a feed sync is ready.                                     |
+| Store memory                      | `createIngestMemoryTool()`                 | Store a Graphlit memory item. The public schema does not expose TTL. |
+| Delete memory                     | `createDeleteMemoryTool()`                 | Delete memory content after verifying `ContentTypes.Memory`.         |
 
 ### Enrichment And Generation
 
 Availability depends on the Graphlit project capabilities, connectors, and credits.
 
-| Agent ability | Add this tool | What it does |
-| --- | --- | --- |
+| Agent ability    | Add this tool                 | What it does                                                                  |
+| ---------------- | ----------------------------- | ----------------------------------------------------------------------------- |
 | Enrich companies | `createEnrichCompaniesTool()` | Lookup company candidates and optionally create/enrich organization entities. |
-| Enrich persons | `createEnrichPersonsTool()` | Lookup person candidates and optionally create/enrich person entities. |
-| Publish audio | `createPublishAudioTool()` | Generate audio content from text. |
-| Publish image | `createPublishImageTool()` | Generate image content from a prompt. |
-| Publish video | `createPublishVideoTool()` | Generate video content from a prompt. |
+| Enrich persons   | `createEnrichPersonsTool()`   | Lookup person candidates and optionally create/enrich person entities.        |
+| Publish audio    | `createPublishAudioTool()`    | Generate audio content from text.                                             |
+| Publish image    | `createPublishImageTool()`    | Generate image content from a prompt.                                         |
+| Publish video    | `createPublishVideoTool()`    | Generate video content from a prompt.                                         |
 
-This package intentionally does not export Zine/Dossium app-layer tools such as broad `inspect`, delivery tools (`draft_email`, `send_email`, social/channel/document/issue/calendar writers), prompt analysis, shell/code execution, or first-party orchestration helpers. The resource tools are package-native Graphlit readers, not `platform__...` MCP runtime tools, and they do not read `skills://`, `ui://`, or external `https://` resources.
+This package intentionally does not export Zine/Dossium app-layer tools such as broad `inspect`, delivery tools (`draft_email`, `send_email`, social/channel/document/issue/calendar writers), shell/code execution, or first-party orchestration helpers. The resource tools are package-native Graphlit readers, not `platform__...` MCP runtime tools, and they do not read `skills://`, `ui://`, or external `https://` resources.
 
 ## Graphlit streamAgent
 

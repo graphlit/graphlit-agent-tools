@@ -9,6 +9,7 @@ import * as agentToolsExports from "../src/index.js";
 import {
   createAddContentLabelTool,
   createAddContentsToCollectionTool,
+  createAnalyzePromptTool,
   createCountContentsTool,
   createCreateCollectionTool,
   createDeleteCollectionTool,
@@ -58,6 +59,7 @@ describe("agent tools", () => {
     const tools = [
       createAddContentLabelTool(client),
       createAddContentsToCollectionTool(client),
+      createAnalyzePromptTool(),
       createCountContentsTool(client),
       createCreateCollectionTool(client),
       createDeleteCollectionTool(client),
@@ -124,7 +126,6 @@ describe("agent tools", () => {
       "createWriteDocumentTool",
       "createWriteIssueTool",
       "createWriteCalendarEventTool",
-      "createAnalyzePromptTool",
       "createPlatformListResourcesTool",
       "createPlatformReadResourceTool",
     ]) {
@@ -174,6 +175,63 @@ describe("agent tools", () => {
         expect(pattern.test(text)).toBe(false);
       }
     }
+  });
+
+  it("returns a pure prompt analysis routing contract", async () => {
+    const analyzePrompt = createAnalyzePromptTool();
+
+    const result = await analyzePrompt.handler({
+      prompt: "What is the latest from the NHL Stanley Cup Final?",
+      retrievalNeeded: true,
+      intent: "current_lookup",
+      complexity: "standard",
+      sourceScopes: ["public_web"],
+      subjects: [
+        {
+          text: "NHL Stanley Cup Final",
+          kind: "event",
+          role: "primary",
+        },
+      ],
+      evidencePlan: [
+        {
+          purpose: "search_public_web",
+          queryOrTarget:
+            "official NHL Stanley Cup Final latest schedule result",
+          priority: "required",
+          reason: "Current status and schedule can change.",
+        },
+        {
+          purpose: "cross_check",
+          queryOrTarget: "latest game recap from a second source",
+          priority: "preferred",
+          reason: "Cross-check answer-critical details.",
+        },
+      ],
+      answerContract: {
+        shape: "bullets",
+        mustInclude: ["series status", "latest result", "next game"],
+        citationExpectation: "source_labels",
+        gapHandling: "Call out stale, missing, or contradictory evidence.",
+      },
+      nextStep: {
+        tool: "web_search",
+        parameters: {
+          query: "official NHL Stanley Cup Final latest schedule result",
+          limit: 5,
+        },
+        reason: "Start with current source-of-record status.",
+      },
+    });
+
+    expect(result).toMatchObject({
+      type: "prompt_analysis",
+      retrievalNeeded: true,
+      intent: "current_lookup",
+      complexity: "standard",
+      constraints: [],
+      nextStep: { tool: "web_search" },
+    });
   });
 
   it("lists and reads Graphlit resource-shaped URIs without platform MCP tool names", async () => {

@@ -9,6 +9,30 @@ export type {
 } from "./types.js";
 
 export {
+  createAnalyzePromptTool,
+  AnalyzePromptInputSchema,
+  AnalyzePromptIntentSchema,
+  AnalyzePromptComplexitySchema,
+  AnalyzePromptSourceScopeSchema,
+  AnalyzePromptSubjectKindSchema,
+  AnalyzePromptSubjectRoleSchema,
+  AnalyzePromptEvidencePurposeSchema,
+  AnalyzePromptPrioritySchema,
+  AnalyzePromptConstraintTypeSchema,
+  AnalyzePromptAnswerShapeSchema,
+  AnalyzePromptCitationExpectationSchema,
+  AnalyzePromptNextStepToolSchema,
+  AnalyzePromptSubjectSchema,
+  AnalyzePromptEvidencePlanItemSchema,
+  AnalyzePromptConstraintSchema,
+  AnalyzePromptAnswerContractSchema,
+  AnalyzePromptNextStepSchema,
+  type AnalyzePromptArgs,
+  type AnalyzePromptConstraint,
+  type AnalyzePromptResult,
+} from "./tools/analyze-prompt.js";
+
+export {
   createAddContentLabelTool,
   AddContentLabelInputSchema,
   type AddContentLabelArgs,
