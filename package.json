@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.27",
-    "graphlit-client": "^1.0.20260612001",
+    "graphlit-client": "^1.0.20260614001",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
