@@ -22,6 +22,7 @@ import {
   createIngestTextTool,
   createIngestUrlTool,
   createInspectContentTool,
+  createInspectPageTool,
   createListResourcesTool,
   createLookupEntityTool,
   createPublishAudioTool,
@@ -72,6 +73,7 @@ describe("agent tools", () => {
       createIngestTextTool(client),
       createRetrieveContentsTool(client),
       createInspectContentTool(client),
+      createInspectPageTool(client),
       createListResourcesTool(client),
       createLookupEntityTool(client),
       createPublishAudioTool(client),
@@ -446,6 +448,38 @@ describe("agent tools", () => {
     expect(result.results[0]).toMatchObject({
       uri: "https://docs.graphlit.dev",
       title: "Graphlit docs",
+    });
+  });
+
+  it("inspects a public page without ingesting it", async () => {
+    const inspectPage = vi.fn(
+      async (): Promise<Types.InspectPageMutation> =>
+        ({
+          inspectPage: {
+            result: "# Example Page\n\nGraphlit can inspect public pages.",
+          },
+        }) as Types.InspectPageMutation,
+    );
+    const client = asClient({ inspectPage });
+    const inspectPageTool = createInspectPageTool(client, {
+      correlationId: "tenant-1",
+    });
+
+    const result = await inspectPageTool.handler({
+      url: "https://example.com/docs",
+      range: { start: 2, end: 14 },
+      maxTextLength: 20,
+    });
+
+    expect(inspectPage).toHaveBeenCalledWith(
+      "https://example.com/docs",
+      "tenant-1",
+    );
+    expect(result).toMatchObject({
+      url: "https://example.com/docs",
+      text: "Example Page",
+      truncated: false,
+      range: { start: 2, end: 14 },
     });
   });
 

@@ -11,7 +11,7 @@ Use these tools with any agent harness that accepts structured tool definitions 
 - **Give your agent private context**: retrieve from Graphlit-ingested documents, emails, events, messages, pages, posts, and files.
 - **Ground answers in inspectable sources**: return `contents://...` references your app can render or inspect before the agent makes source-backed claims.
 - **Handle real retrieval requests**: support semantic questions like "what risks did the customer mention?" and filter-only requests like "all emails in the last week."
-- **Bring in fresh context when needed**: let the agent search the web, ingest a URL, and wait for processing before using newly added content.
+- **Bring in fresh context when needed**: let the agent search the web, inspect a page without ingesting it, ingest a URL, and wait for processing before using newly added content.
 - **Keep control in the app**: choose the tools your agent should have without adding tool discovery, an MCP wrapper, or an approval layer.
 
 ## Install
@@ -55,7 +55,7 @@ That shape is intentionally boring:
 
 Prefer `retrieve_contents` plus `inspect_content` as the default RAG pair. Add `analyze_prompt` when you want the model to produce a visible routing contract before retrieval. Add mutating, enrichment, and generation tools only when the host app wants the agent to have those abilities.
 
-For read-only agent comparisons or customer-facing agents that should not mutate a Graphlit project, a good default set is `retrieve_contents`, `inspect_content`, `count_contents`, `list_resources`, `read_resource`, `web_search`, and `web_map`. When exposing resource tools in a constrained app, pass `allowedKinds` to keep the agent inside the resource surface you intend.
+For read-only agent comparisons or customer-facing agents that should not mutate a Graphlit project, a good default set is `retrieve_contents`, `inspect_content`, `count_contents`, `list_resources`, `read_resource`, `web_search`, `inspect_page`, and `web_map`. When exposing resource tools in a constrained app, pass `allowedKinds` to keep the agent inside the resource surface you intend.
 
 ### Read-Only Retrieval
 
@@ -77,6 +77,7 @@ For read-only agent comparisons or customer-facing agents that should not mutate
 | Query collections                | `createQueryCollectionsTool()`       | List collections.                                                                                                                                            |
 | Query feeds                      | `createQueryFeedsTool()`             | List feeds.                                                                                                                                                  |
 | Search the public web            | `createWebSearchTool()`              | Find current web leads without ingesting them.                                                                                                               |
+| Inspect a public web page        | `createInspectPageTool()`            | Return Markdown text from one public URL without ingesting it into Graphlit.                                                                                  |
 | Map a site                       | `createWebMapTool()`                 | Discover public URLs from a site map without ingesting them.                                                                                                 |
 | List resource URIs               | `createListResourcesTool()`          | List Graphlit resource URIs that `read_resource` can dereference.                                                                                            |
 | Read resource URIs               | `createReadResourceTool()`           | Read `contents://`, `collections://`, `feeds://`, `facts://`, `conversations://`, and `entities://` resources through SDK calls.                             |

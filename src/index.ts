@@ -142,6 +142,14 @@ export {
 } from "./tools/inspect-content.js";
 
 export {
+  createInspectPageTool,
+  InspectPageInputSchema,
+  type InspectPageArgs,
+  type InspectPageResult,
+  type InspectPageToolOptions,
+} from "./tools/inspect-page.js";
+
+export {
   createLookupEntityTool,
   LookupEntityInputSchema,
   type LookupEntityArgs,
