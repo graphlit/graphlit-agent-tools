@@ -50,11 +50,11 @@
     "zod-to-json-schema": "^3.24.6"
   },
   "peerDependencies": {
-    "graphlit-client": ">=1.0.20260614002"
+    "graphlit-client": ">=1.0.20260616001"
   },
   "devDependencies": {
     "@types/node": "^20.19.27",
-    "graphlit-client": "^1.0.20260614002",
+    "graphlit-client": "^1.0.20260616001",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
