@@ -1,4 +1,4 @@
-# @graphlit/agent-tools
+# Graphlit Agent Tools
 
 Give your agent the Graphlit retrieval tools it needs.
 
